@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArSL Translator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            color: #333;
+        }
+        header {
+            text-align: center;
+            padding: 24px 0 8px;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        header p {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px 32px;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .panel {
+            flex: 1;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+        .panel h2 {
+            font-size: 16px;
+            font-weight: 600;
+            align-self: flex-start;
+        }
+
+        /* Toggle */
+        .toggle-row {
+            display: flex;
+            width: 100%;
+            background: #f0f2f5;
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .toggle-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            font-size: 13px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .toggle-btn.active {
+            background: white;
+            color: #007bff;
+            font-weight: 600;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Input square */
+        .input-square {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px dashed #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fafafa;
+            position: relative;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .input-square:hover { border-color: #007bff; }
+        .input-square.has-content { border-style: solid; border-color: #007bff; }
+        .input-square img,
+        .input-square video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .input-square video { transform: scaleX(-1); }
+        .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #bbb;
+            font-size: 13px;
+            pointer-events: none;
+        }
+        .placeholder svg { width: 40px; height: 40px; stroke: #ccc; }
+
+        input[type="file"] { display: none; }
+        canvas { display: none; }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 11px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-outline {
+            width: 100%;
+            padding: 11px;
+            background: white;
+            color: #007bff;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover { background: #f0f7ff; }
+
+        /* Result panel */
+        .result-box {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #fafafa;
+            gap: 10px;
+        }
+        .result-letter {
+            font-size: 96px;
+            font-weight: 700;
+            color: #007bff;
+            line-height: 1;
+        }
+        .result-label {
+            font-size: 14px;
+            color: #888;
+        }
+        .conf-bar-wrap {
+            width: 75%;
+        }
+        .conf-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+        .conf-bar-bg {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .conf-bar-fill {
+            height: 100%;
+            background: #007bff;
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+        .conf-value {
+            font-size: 13px;
+            color: #555;
+            text-align: center;
+            margin-top: 4px;
+        }
+        .empty-hint {
+            color: #ccc;
+            font-size: 13px;
+            text-align: center;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<header>
+    Arabic Sign Language Translator
+    <p>Upload a sign image or capture from your camera</p>
+</header>
+
+<div class="container">
+
+    <!-- LEFT: Input Panel -->
+    <div class="panel">
+        <h2>Input</h2>
+
+        <!-- Toggle -->
+        <div class="toggle-row">
+            <button class="toggle-btn active" id="btnUploadTab">📁 Upload</button>
+            <button class="toggle-btn"        id="btnCameraTab">📷 Camera</button>
+        </div>
+
+        <!-- Input square -->
+        <div class="input-square" id="inputSquare">
+            <!-- Upload preview -->
+            <img id="uploadPreview" class="hidden" alt="uploaded sign" />
+            <!-- Camera feed -->
+            <video id="cameraFeed" class="hidden" autoplay playsinline></video>
+            <!-- Placeholder -->
+            <div class="placeholder" id="placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span id="placeholderText">Click to upload image</span>
+            </div>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" />
+        <canvas id="snapshotCanvas"></canvas>
+
+        <!-- Upload mode button -->
+        <button class="btn" id="uploadSelectBtn">Choose Image</button>
+
+        <!-- Camera mode buttons -->
+        <button class="btn hidden"         id="captureBtn">Capture Sign</button>
+        <button class="btn-outline hidden" id="retakeBtn">Retake</button>
+
+        <!-- Predict -->
+        <button class="btn" id="predictBtn" disabled>Predict Sign ›</button>
+    </div>
+
+    <!-- RIGHT: Result Panel -->
+    <div class="panel">
+        <h2>Prediction</h2>
+
+        <div class="result-box" id="resultBox">
+            <div class="empty-hint" id="emptyHint">
+                Result will appear here
+            </div>
+
+            <div id="loadingHint" class="hidden" style="color:#aaa; font-size:14px;">
+                Analysing…
+            </div>
+
+            <div id="resultContent" class="hidden" style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
+                <div class="result-letter" id="resultLetter">-</div>
+                <div class="result-label"  id="resultLabel">-</div>
+                <div class="conf-bar-wrap">
+                    <div class="conf-label">Confidence</div>
+                    <div class="conf-bar-bg">
+                        <div class="conf-bar-fill" id="confBarFill" style="width:0%"></div>
+                    </div>
+                    <div class="conf-value" id="confValue">-</div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-outline" id="resetBtn" style="margin-top:auto;">Reset</button>
+    </div>
+
+</div>
+
+<script>
+    const API_URL = "https://shapinam--arsl-translator-fastapi-app.modal.run";
+
+    // Elements
+    const inputSquare     = document.getElementById('inputSquare');
+    const uploadPreview   = document.getElementById('uploadPreview');
+    const cameraFeed      = document.getElementById('cameraFeed');
+    const placeholder     = document.getElementById('placeholder');
+    const placeholderText = document.getElementById('placeholderText');
+    const fileInput       = document.getElementById('fileInput');
+    const snapshotCanvas  = document.getElementById('snapshotCanvas');
+
+    const btnUploadTab  = document.getElementById('btnUploadTab');
+    const btnCameraTab  = document.getElementById('btnCameraTab');
+    const uploadSelectBtn = document.getElementById('uploadSelectBtn');
+    const captureBtn    = document.getElementById('captureBtn');
+    const retakeBtn     = document.getElementById('retakeBtn');
+    const predictBtn    = document.getElementById('predictBtn');
+    const resetBtn      = document.getElementById('resetBtn');
+
+    const emptyHint     = document.getElementById('emptyHint');
+    const loadingHint   = document.getElementById('loadingHint');
+    const resultContent = document.getElementById('resultContent');
+    const resultLetter  = document.getElementById('resultLetter');
+    const resultLabel   = document.getElementById('resultLabel');
+    const confBarFill   = document.getElementById('confBarFill');
+    const confValue     = document.getElementById('confValue');
+
+    let mode = 'upload';       // 'upload' | 'camera'
+    let cameraStream = null;
+    let capturedBase64 = null;
+    let cameraActive = false;  // true = live feed, false = snapshot shown
+
+    // ── Tab toggle ──
+    btnUploadTab.addEventListener('click', () => switchMode('upload'));
+    btnCameraTab.addEventListener('click', () => switchMode('camera'));
+
+    function switchMode(newMode) {
+        mode = newMode;
+        capturedBase64 = null;
+        predictBtn.disabled = true;
+
+        if (newMode === 'upload') {
+            btnUploadTab.classList.add('active');
+            btnCameraTab.classList.remove('active');
+            stopCamera();
+            showUploadUI();
+        } else {
+            btnCameraTab.classList.add('active');
+            btnUploadTab.classList.remove('active');
+            showCameraUI();
+            startCamera();
+        }
+        showResult('empty');
+    }
+
+    // ── Upload mode ──
+    function showUploadUI() {
+        uploadSelectBtn.classList.remove('hidden');
+        captureBtn.classList.add('hidden');
+        retakeBtn.classList.add('hidden');
+        cameraFeed.classList.add('hidden');
+
+        if (capturedBase64) {
+            uploadPreview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            inputSquare.classList.add('has-content');
+        } else {
+            uploadPreview.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+            placeholderText.textContent = 'Click to upload image';
+            inputSquare.classList.remove('has-content');
+        }
+    }
+
+    inputSquare.addEventListener('click', () => {
+        if (mode === 'upload') fileInput.click();
+    });
+
+    uploadSelectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            capturedBase64 = e.target.result;
+            uploadPreview.src = capturedBase64;
+            uploadPreview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            inputSquare.classList.add('has-content');
+            predictBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // ── Camera mode ──
+    function showCameraUI() {
+        uploadSelectBtn.classList.add('hidden');
+        uploadPreview.classList.add('hidden');
+        captureBtn.classList.remove('hidden');
+        retakeBtn.classList.add('hidden');
+        cameraFeed.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        inputSquare.classList.remove('has-content');
+        cameraActive = true;
+    }
+
+    async function startCamera() {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraFeed.srcObject = cameraStream;
+        } catch (err) {
+            alert("Camera access denied.");
+        }
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    captureBtn.addEventListener('click', () => {
+        const w = cameraFeed.videoWidth;
+        const h = cameraFeed.videoHeight;
+        snapshotCanvas.width  = w;
+        snapshotCanvas.height = h;
+        const ctx = snapshotCanvas.getContext('2d');
+        // Mirror fix — flip canvas pixels to match what user sees
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(cameraFeed, 0, 0, w, h);
+        capturedBase64 = snapshotCanvas.toDataURL('image/jpeg', 0.9);
+
+        // Show snapshot in the square instead of live feed
+        uploadPreview.src = capturedBase64;
+        uploadPreview.classList.remove('hidden');
+        cameraFeed.classList.add('hidden');
+        inputSquare.classList.add('has-content');
+
+        captureBtn.classList.add('hidden');
+        retakeBtn.classList.remove('hidden');
+        predictBtn.disabled = false;
+        cameraActive = false;
+    });
+
+    retakeBtn.addEventListener('click', () => {
+        capturedBase64 = null;
+        uploadPreview.classList.add('hidden');
+        cameraFeed.classList.remove('hidden');
+        captureBtn.classList.remove('hidden');
+        retakeBtn.classList.add('hidden');
+        inputSquare.classList.remove('has-content');
+        predictBtn.disabled = true;
+        showResult('empty');
+        cameraActive = true;
+    });
+
+    // ── Predict ──
+    predictBtn.addEventListener('click', async () => {
+        if (!capturedBase64) return;
+        predictBtn.disabled = true;
+        showResult('loading');
+
+        const raw = capturedBase64.includes(',') ? capturedBase64.split(',')[1] : capturedBase64;
+
+        try {
+            const res = await fetch(API_URL + '/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_base64: raw })
+            });
+            if (!res.ok) throw new Error('Server error ' + res.status);
+            const data = await res.json();
+
+            resultLetter.textContent  = data.letter;
+            resultLabel.textContent   = data.label;
+            confBarFill.style.width   = data.confidence + '%';
+            confValue.textContent     = data.confidence.toFixed(1) + '%';
+            showResult('result');
+        } catch (err) {
+            alert('Error: ' + err.message);
+            showResult('empty');
+        }
+
+        predictBtn.disabled = false;
+    });
+
+    // ── Reset ──
+    resetBtn.addEventListener('click', () => {
+        capturedBase64 = null;
+        fileInput.value = '';
+        uploadPreview.src = '';
+        uploadPreview.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        inputSquare.classList.remove('has-content');
+        predictBtn.disabled = true;
+
+        if (mode === 'camera') {
+            cameraFeed.classList.remove('hidden');
+            captureBtn.classList.remove('hidden');
+            retakeBtn.classList.add('hidden');
+            cameraActive = true;
+        }
+        showResult('empty');
+    });
+
+    // ── Result states ──
+    function showResult(state) {
+        emptyHint.classList.add('hidden');
+        loadingHint.classList.add('hidden');
+        resultContent.classList.add('hidden');
+        resultContent.style.display = '';
+
+        if (state === 'empty')   emptyHint.classList.remove('hidden');
+        if (state === 'loading') loadingHint.classList.remove('hidden');
+        if (state === 'result') {
+            resultContent.classList.remove('hidden');
+            resultContent.style.display = 'flex';
+        }
+    }
+
+    // Start in upload mode
+    switchMode('upload');
+</script>
+
+</body>
+</html>
