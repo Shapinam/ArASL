@@ -4,7 +4,7 @@
 ```https://www.kaggle.com/datasets/gannayasser/arabic-alphabets-sign-language-dataset-arasl```
 
 ## Deployed link
-```[https://www.kaggle.com/datasets/gannayasser/arabic-alphabets-sign-language-dataset-arasl](https://ar-asl.vercel.app/)```
+```https://ar-asl.vercel.app/```
 
 ## File Structure
 
