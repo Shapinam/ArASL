@@ -1,9 +1,7 @@
 # ArSL CNN — Modular Training Code
 
 ## Dataset
-```
-https://www.kaggle.com/datasets/gannayasser/arabic-alphabets-sign-language-dataset-arasl
-```
+[arasl]: https://www.kaggle.com/datasets/gannayasser/arabic-alphabets-sign-language-dataset-arasl
 
 ## File Structure
 
@@ -46,9 +44,8 @@ Edit `config.py` to change any setting:
 # KArSL Arabic Sign Language Recognition — Modular Pipeline
 
 ## Dataset
-```
-https://hamzah-luqman.github.io/KArSL/
-```
+[karsl]: https://hamzah-luqman.github.io/KArSL/
+
 ## Project Structure
 
 ```
