@@ -38,6 +38,103 @@ Edit `config.py` to change any setting:
 - `LEARNING_RATE` — Adam optimizer LR (default 0.001)
 - `INPUT_DIR` / `OUTPUT_DIR` — Kaggle paths
 
+# KArSL Arabic Sign Language Recognition — Modular Pipeline
+
+Refactored from a monolithic Colab notebook into a clean, importable Python project.
+
+## Project Structure
+
+```
+KArSL_modular/
+│
+├── config/
+│   └── config.py           ← ALL hyperparameters, paths, experiment definitions
+│
+├── data/
+│   ├── extract.py          ← Dataset download, 7z extraction, video relocation
+│   └── loader.py           ← .npy loading, train/val/test splits, saving
+│
+├── features/
+│   ├── keypoints.py        ← MediaPipe init, frame reading, extraction, normalisation
+│   └── augmentation.py     ← Full video → .npy pipeline (all signers × classes)
+│
+├── model/
+│   └── architecture.py     ← ArSL-TGRU model (Transformer + dual GRU)
+│
+├── training/
+│   └── trainer.py          ← Compile, callbacks, training loop
+│
+├── evaluation/
+│   └── evaluate.py         ← Metrics, per-class report, summary table
+│
+├── main.py                 ← CLI orchestrator (--stage extract|preprocess|prepare|train|evaluate|all)
+└── KArSL_pipeline.ipynb    ← Thin Colab notebook — imports modules, no business logic
+```
+
+## Quick Start
+
+### In Colab (notebook)
+1. Upload or clone this folder to `/content/KArSL_modular`.
+2. Open `KArSL_pipeline.ipynb` and run cells top-to-bottom.
+
+### From the command line / script
+```python
+from main import main
+main("all")          # full pipeline
+main("train")        # training only (expects prepare to have run)
+main("evaluate")     # evaluation only (loads saved checkpoints)
+```
+
+Or via CLI:
+```bash
+python main.py --stage all
+python main.py --stage train
+```
+
+## Configuration
+
+Everything you need to tune is in `config/config.py`:
+
+| Variable | Default | Description |
+|---|---|---|
+| `BASE_DIR` | `.../KArSL-502` | Raw video root |
+| `NPY_DIR` | `.../NPY` | Preprocessed .npy output |
+| `SAVE_DIR` | `.../Processed_Experiments` | Train/val/test array output |
+| `SEQ_LEN` | 30 | Frames per sequence |
+| `N_AUG` | 10 | Augmentation copies per training video |
+| `EPOCHS` | 50 | Max training epochs |
+| `BATCH_SIZE` | 16 | Mini-batch size |
+| `LR` | 1e-3 | Initial learning rate |
+| `N_CLASSES` | 59 | Number of sign classes |
+
+## Model Architecture
+
+```
+Input (30, 159)
+    │
+    ├─ PositionalEmbedding
+    │  └─ 4 × TransformerBlock (sequential)
+    │        └─ LayerNorm → MHA → Residual → FFN → Residual → GAP → Dense(64) → Dropout
+    │
+    ├─ GRU Branch 1: GRU(64) → GRU(128) → GRU(64) → Dense(64) → Dropout
+    │
+    └─ GRU Branch 2: GRU(64) → GRU(128) → GRU(64) → Dense(64) → Dropout
+    │
+Concatenate([T, G1, G2])  →  (192,)
+Dense(128, relu) → Dropout(0.5) → Dense(59, softmax)
+```
+
+## Experiments
+
+Cross-signer evaluation (leave-one-signer-out):
+
+| Experiment | Train signers | Test signer |
+|---|---|---|
+| Exp1_Test_03 | 01, 02 | 03 |
+| Exp2_Test_02 | 01, 03 | 02 |
+| Exp3_Test_01 | 02, 03 | 01 |
+
+
 ## Deployment Output
 
 After running `train.py`, two files are ready for deployment:
