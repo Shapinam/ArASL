@@ -1,0 +1,9 @@
+numpy
+scikit-learn
+opencv-python
+protobuf==5.29.1
+mediapipe==0.10.21
+tensorflow>=2.10
+gdown
+py7zr
+flask
